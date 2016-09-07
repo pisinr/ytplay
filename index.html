@@ -53,6 +53,7 @@
       //   player.loadVideoById(id);
       // }
       var btn = document.getElementById('btnLoadPlaylist');
+      var playlist_mode = true;
       btn.onclick = function(event) {
         event.stopPropagation();
         event.preventDefault();
@@ -61,14 +62,17 @@
         if (id.startsWith('http://') || id.startsWith('https://')) {
           var queries = parseURL(id).queries;
           if (queries['list']) {
+            playlist_mode = true;
             player.loadPlaylist({
               listType: 'playlist',
               list: queries['list']
             });
           } else {
+            playlist_mode = false;
             player.loadVideoById(queries['v']);
           }
         } else {
+          playlist_mode = true;
           player.loadPlaylist({
             listType: 'playlist',
             list: id
@@ -141,7 +145,11 @@
           // setTimeout(stopVideo, 6000);
         }
         if (event.data == 0 && looping) {
-          player.previousVideo()
+          if (playlist_mode) {
+            player.previousVideo()
+          } else {
+            player.seekTo(0)
+          }
         }
       }
 
