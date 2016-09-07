@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    <style type="text/css">
+      html, body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      .search-input {
+        position: absolute;
+        top: 0;
+        left: 50%;
+      }
+      .search-input {
+        opacity: 0.3;
+      }
+      .search-input:hover, .search-input:focus {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 1. The <iframe> (and video player) will replace this <div> tag. -->
+    <div id="player"></div>
+    <div class="search-input">
+      <!-- <button class="btn btn-small" id="show-search">+</button> -->
+      <form id="loadForm">
+        <div class="input-group">
+          <!-- <input type="text" class="form-control" id="videoId" placeholder="URL or Playlist ID"> -->
+          <!-- <span class="input-group-btn"> -->
+            <button id="btnLoadPlaylist" type="button" class="btn btn-sm btn-default">+</button>
+            <button id="btnLoop" type="button" class="btn btn-sm btn-default">
+              O
+            </button>
+          <!-- </span> -->
+        </div>
+      </form>
+    </div>
+    <script>
+      // var btn = document.getElementById('btnLoadVideo');
+      // btn.onclick = function(event) {
+      //   var id = document.getElementById('videoId').value;
+      //   event.stopPropagation();
+      //   event.preventDefault();
+      //   console.log('onclick');
+      //   player.loadVideoById(id);
+      // }
+      var btn = document.getElementById('btnLoadPlaylist');
+      btn.onclick = function(event) {
+        event.stopPropagation();
+        event.preventDefault();
+        var id =require('electron').clipboard.readText();
+        // var id = document.getElementById('videoId').value || '';
+        if (id.startsWith('http://') || id.startsWith('https://')) {
+          var queries = parseURL(id).queries;
+          if (queries['list']) {
+            player.loadPlaylist({
+              listType: 'playlist',
+              list: queries['list']
+            });
+          } else {
+            player.loadVideoById(queries['v']);
+          }
+        } else {
+          player.loadPlaylist({
+            listType: 'playlist',
+            list: id
+          });
+        }
+      }
+
+      var btnLoop = document.getElementById('btnLoop');
+      var looping = false;
+      btnLoop.onclick = function(event) {
+        event.stopPropagation();
+        event.preventDefault();
+        looping = !looping;
+        if (looping) {
+          btnLoop.classList.remove('btn-default');
+          btnLoop.classList.add('btn-primary');
+        } else {
+          btnLoop.classList.add('btn-default');
+          btnLoop.classList.remove('btn-primary');
+        }
+      }
+
+      // 2. This code loads the IFrame Player API code asynchronously.
+      var tag = document.createElement('script');
+
+      tag.src = "https://www.youtube.com/iframe_api";
+      var firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+      // 3. This function creates an <iframe> (and YouTube player)
+      //    after the API code downloads.
+      var player;
+      var w = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+      var h = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight
+      function onYouTubeIframeAPIReady() {
+        player = new YT.Player('player', {
+          height: h,
+          width: w,
+          // videoId: 'M7lc1UVf-VE',
+          // listType:'playlist',
+          events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange,
+            'onError': onError
+          }
+        });
+      }
+
+      // 4. The API will call this function when the video player is ready.
+      function onPlayerReady(event) {
+        // event.target.playVideo();
+      }
+
+      // 5. The API calls this function when the player's state changes.
+      //    The function indicates that when playing a video (state=1),
+      //    the player should play for six seconds and then stop.
+      var playing = false;
+      function onPlayerStateChange(event) {
+        console.log('onPlayerStateChange', event.data);
+        if (event.data == 5 && !playing) {
+          console.log('cued');
+          playing = true;
+          event.target.playVideo();
+          // setTimeout(stopVideo, 6000);
+        }
+        if (event.data == -1) {
+          console.log('unstarted');
+          // playing = true;
+          // event.target.nextVideo();
+          // setTimeout(stopVideo, 6000);
+        }
+        if (event.data == 0 && looping) {
+          player.previousVideo()
+        }
+      }
+
+      function onError(event) {
+        console.log('onError', event.data);
+        player.nextVideo();
+      }
+      function stopVideo() {
+        // player.stopVideo();
+      }
+
+      function parseURL(url) {
+        var parser = document.createElement('a');
+        parser.href = url;
+        var queries = parser.search.replace(/^\?/, '').split('&');
+        var searchObject = {};
+        for( i = 0; i < queries.length; i++ ) {
+          split = queries[i].split('=');
+          searchObject[split[0]] = split[1];
+        }
+        return {
+            protocol: parser.protocol,
+            host: parser.host,
+            hostname: parser.hostname,
+            port: parser.port,
+            pathname: parser.pathname,
+            search: parser.search,
+            queries: searchObject,
+            hash: parser.hash
+        };
+      }
+
+      window.onresize = function() {
+        var w = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+        var h = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight
+        console.log(w, 'x', h);
+        player.setSize(w, h);
+      }
+    </script>
+  </body>
+</html>
